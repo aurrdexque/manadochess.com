@@ -1,749 +1,493 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Manado Chess League — One-Page Leaderboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Manado Chess League — Leaderboard (Clean + Restore)</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
 <style>
-    :root{
-      --bg:#0f1a14; --panel:#15221b; --panel-2:#1b2b22; --ink:#f5fff8; --muted:#cfe3d7;
-      --brand:#49a25a; --brand-2:#2e7d32; --line:#203528; --pill:#8bc34a; --accent-red:#e53935;
-    }
-    html,body{margin:0;background:linear-gradient(135deg,#1b1630 0%,#271d49 60%,#3b235d 100%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    .wrap{max-width:1200px;margin:0 auto;padding:18px}
-    .header{background:linear-gradient(90deg,var(--brand) 0%,var(--brand-2) 100%);padding:18px 12px;border-bottom:4px solid #0d2818}
-    .title{font-size:42px;font-weight:900;text-align:center;letter-spacing:.5px}
-    .grid{display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-top:18px}
-    .card{background:var(--panel);border:2px solid var(--line);border-radius:14px;overflow:hidden}
-    .card .head{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#388e3c,#2e7d32);padding:10px 14px;font-weight:800;text-transform:uppercase}
-    .pill{margin-left:auto;background:var(--pill);color:#2a1648;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:900}
-    .card .body{padding:10px 14px}
-    table{width:100%;border-collapse:collapse}
-    thead th{background:linear-gradient(90deg,#43a047,#2e7d32);color:#fff;padding:10px 8px;text-align:left}
-    tbody td{padding:10px 8px;border-bottom:1px solid var(--line)}
-    .col-no{width:64px;text-align:center}
-    .col-rating{width:120px;text-align:right}
-    .row-alt{background:rgba(255,255,255,0.04)}
-    .badge{background:#173d25;border:1px solid #2e7d32;border-radius:999px;padding:2px 10px}
-    .podium{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
-    .podium .slot{display:flex;align-items:center;gap:10px;background:#15221b;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-    .podium .medal{font-size:18px}
-    .podium .name{font-weight:700}
-    .podium .score{margin-left:auto;color:var(--muted)}
-    .admin{margin-top:22px;background:var(--panel-2);border:2px dashed var(--line);border-radius:14px;padding:12px}
-    .flex{display:flex;gap:10px;flex-wrap:wrap}
-    input[type=file],input[type=text],input[type=number],select{background:#120f25;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
-    input[type=text]{min-width:220px}
-    .btn{background:linear-gradient(90deg,#43a047,#2e7d32);border:0;color:#1b1630;font-weight:800;padding:10px 14px;border-radius:10px;cursor:pointer}
-    .btn.outline{background:transparent;color:#fff;border:1px solid var(--line)}
-    .hint{color:var(--muted);font-size:14px}
-    .debug{margin-top:8px;color:#bba9d6;font-size:12px;white-space:pre-wrap}
-    .footer{color:var(--muted);text-align:center;margin:20px 0 36px}
-    .pTitle{display:inline-block;background:var(--accent-red);color:#fff;font-weight:900;margin-right:6px;padding:2px 8px;border-radius:999px;letter-spacing:.4px}
-    #toast{position:fixed;right:16px;bottom:16px;background:#2e7d32;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .25s,transform .25s;z-index:9999;font-weight:800}
-    #toast.show{opacity:1;transform:translateY(0)}
-    details summary{cursor:pointer;user-select:none;list-style:none}
-    details summary::-webkit-details-marker{display:none}
-    .summary-btn{display:inline-block;background:#1c2a22;border:1px solid var(--line);padding:6px 10px;border-radius:10px;font-weight:700}
-  
-/* --- Remove ALL tie-break columns cleanly --- */
-/* Assume column order: Rank | Name | Points | TB1 | TB2 | ... */
-/* Keep only first 3 columns; hide everything from the 4th onward */
-#tour-body thead th:nth-child(n+4),
-#tour-body tbody td:nth-child(n+4) {
-  display: none !important;
-}
-
-/* Make tables fit container with no horizontal scroll */
-#tour-body table { table-layout: fixed; width: 100% !important; min-width: 0 !important; }
-#tour-body th, #tour-body td { white-space: normal; word-break: break-word; }
-
-/* Column sizing + style */
-#tour-body thead th:nth-child(1), #tour-body tbody td:nth-child(1) { width: 3.5rem; }
-#tour-body thead th:nth-child(2), #tour-body tbody td:nth-child(2) { width: auto; font-size: 1.1rem; font-weight: 500; }
-#tour-body thead th:nth-child(3), #tour-body tbody td:nth-child(3) { width: 5rem; text-align: right; font-weight: 600; }
-
-/* Force the 3rd header label to read 'Pts.' regardless of source text */
-#tour-body thead th:nth-child(3) { position: relative; color: transparent; }
-#tour-body thead th:nth-child(3)::after {
-  content: "Pts.";
-  color: #fff;
-  position: absolute;
-  right: 0; left: 0;
-  text-align: right;
-}
-
-/* Latest tournament visuals */
-.card.latest{ grid-column:1 / -1; max-width:840px; margin:0 auto; }
-.card.latest .head{ background:linear-gradient(90deg,#1976d2,#0d47a1); }
-.latest .tname{ font-size:26px; font-weight:900; }
+  :root{
+    --bg:#0f1a14; --panel:#15221b; --panel-2:#1b2b22; --ink:#f5fff8; --muted:#cfe3d7;
+    --brand:#49a25a; --brand-2:#2e7d32; --line:#203528; --pill:#8bc34a; --accent-red:#e53935;
+  }
+  html,body{margin:0;background:linear-gradient(135deg,#1b1630 0%,#271d49 60%,#3b235d 100%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px}
+  .header{background:linear-gradient(90deg,var(--brand) 0%,var(--brand-2) 100%);padding:18px 12px;border-bottom:4px solid #0d2818}
+  .title{font-size:42px;font-weight:900;text-align:center;letter-spacing:.5px}
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-top:18px}
+  .card{background:var(--panel);border:2px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .head{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#388e3c,#2e7d32);padding:10px 14px;font-weight:800;text-transform:uppercase}
+  .pill{margin-left:auto;background:var(--pill);color:#2a1648;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:900}
+  .title-chip{display:inline-block;background:#1f4ed8;border:1px solid #1639a5;border-radius:999px;color:#e9f1ff;padding:2px 10px;font-size:14px;font-weight:900;letter-spacing:.3px}
+  .card .body{padding:10px 14px}
+  table{width:100%;border-collapse:collapse}
+  thead th{background:linear-gradient(90deg,#43a047,#2e7d32);color:#fff;padding:10px 8px;text-align:left}
+  tbody td{padding:10px 8px;border-bottom:1px solid var(--line)}
+  .col-no{width:64px;text-align:center}
+  .col-games{width:90px;text-align:right}
+  .col-rating{width:120px;text-align:right}
+  .row-alt{background:rgba(255,255,255,0.04)}
+  .badge{background:#173d25;border:1px solid #2e7d32;border-radius:999px;padding:2px 10px}
+  .podium{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+  .slot{display:flex;align-items:center;gap:10px;background:#15221b;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .medal{font-size:18px}
+  .name{font-weight:700}
+  .score{margin-left:auto;color:var(--muted)}
+  .admin{margin-top:22px;background:var(--panel-2);border:2px dashed var(--line);border-radius:14px;padding:12px}
+  .flex{display:flex;gap:10px;flex-wrap:wrap}
+  input[type=file],input[type=text],input[type=number],select{background:#120f25;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
+  input[type=text]{min-width:220px}
+  .btn{background:linear-gradient(90deg,#43a047,#2e7d32);border:0;color:#1b1630;font-weight:800;padding:10px 14px;border-radius:10px;cursor:pointer}
+  .btn.outline{background:transparent;color:#fff;border:1px solid var(--line)}
+  .hint{color:var(--muted);font-size:14px}
+  .debug{margin-top:8px;color:#bba9d6;font-size:12px;white-space:pre-wrap}
+  .footer{color:var(--muted);text-align:center;margin:20px 0 36px}
+  .pTitle{display:inline-block;background:var(--accent-red);color:#fff;font-weight:900;margin-right:6px;padding:2px 8px;border-radius:999px;letter-spacing:.4px}
+  #toast{position:fixed;right:16px;bottom:16px;background:#2e7d32;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .25s,transform .25s;z-index:9999;font-weight:800}
+  #toast.show{opacity:1;transform:translateY(0)}
+  details summary{cursor:pointer;user-select:none;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  .summary-btn{display:inline-block;background:#1c2a22;border:1px solid var(--line);padding:6px 10px;border-radius:10px;font-weight:700}
+  /* Latest panel shows official-only */  
+  #tour-body .latest .tname{font-size:26px;font-weight:900;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style id="tname-blue">
+#tour-body .latest .tname{
+  font-size:26px; font-weight:900;
+  background:linear-gradient(90deg,#1f4ed8,#244fe7);
+  color:#e9f1ff; padding:8px 12px; border-radius:10px;
+  border:1px solid #1639a5; margin-bottom:8px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+</style>
 </head>
 <body>
 <div aria-atomic="true" aria-live="polite" id="toast" role="status">DONE ✅</div>
 <div class="header"><div class="wrap"><div class="title">Manado Chess League</div></div></div>
 <div class="wrap">
-<div class="grid">
-<div class="card">
-<div class="head">Chess Leaderboard</div>
-<div class="body">
-<table id="table">
-<thead><tr><th class="col-no">No</th><th>Player</th><th class="col-rating">Rating</th></tr></thead>
-<tbody id="tbody">
-<tr><td class="hint" colspan="3">No players yet — upload a Chess-Results file below.</td></tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="card">
-<div class="head">Latest Tournaments</div>
-<div class="body" id="tour-body">
-<div id="officialLatestMount"></div>
-<div class="hint">We show only Top-3 per tournament. Click “Show full standings” to expand.</div>
-</div>
-</div>
-</div>
-<div class="admin">
-<h3>Update Leaderboard</h3>
-<div class="flex">
-<input accept=".csv,.xlsx,.xls" id="file" type="file"/>
-<input id="tname" placeholder="Tournament name (e.g., Governor Cup)" type="text"/>
-<input id="totalRounds" max="20" min="1" placeholder="Total rounds (optional)" type="number"/>
-<label style="display:flex;align-items:center;gap:6px"><input id="finalizeNow" type="checkbox"/> Finalize now</label>
-<button class="btn" id="process">Upload &amp; Update Ratings</button>
-<button class="btn outline" id="demo">Use Demo Data</button>
-<button class="btn outline" id="reset">Undo last upload</button>
-<button class="btn outline" id="backup">Download Backup</button>
-<button class="btn outline" id="runTests">Run Built-in Tests</button>
-</div>
-<div class="hint" style="margin-top:6px">CSV &amp; Excel supported. We aggregate rounds, ignore duplicates, and you can set Total Rounds or Finalize.</div>
-<div class="debug" id="msg">Loading…</div>
-</div>
-<div class="admin" style="margin-top:16px">
-<h3>Manage Tournaments</h3>
-<div class="flex">
-<select id="editSelect"></select>
-<input id="editNewName" placeholder="New tournament name" type="text"/>
-<button class="btn" id="btnRename">Rename</button>
-<button class="btn outline" id="btnDelete">Delete</button>
-</div>
-</div>
-<div class="admin" style="margin-top:16px">
-<h3>Manage Players</h3>
-<div class="flex">
-<select id="playerSelect"></select>
-<input id="playerNewName" placeholder="New player name" type="text"/>
-<button class="btn" id="btnRenamePlayer">Rename Player</button>
-<select id="playerTitleSelect">
-<option value="">— Add/Change Title —</option>
-<option>GM</option><option>IM</option><option>FM</option><option>CM</option><option>NM</option>
-<option>WGM</option><option>WIM</option><option>WFM</option><option>WCM</option><option>PM</option>
-</select>
-<button class="btn outline" id="btnApplyTitle">Apply Title</button>
-</div>
-<div class="hint">Titles show as <span class="pTitle">GM</span> red letters before the name.</div>
-</div>
-
-<div class="admin" id="officialUploadPanel" style="margin-top:16px">
-  <h3>Upload Official Standings (Latest Only)</h3>
-  <div class="hint" style="margin:4px 0 10px">This replaces the <b>Latest Tournaments</b> panel only. Your ratings leaderboard stays untouched.</div>
-  <div class="flex">
-    <input id="off_title" type="text" placeholder="Tournament (e.g., Piala Gubernur 2025 • Round 3)"/>
-    <input id="off_file" type="file" accept=".csv,.xlsx,.xls"/>
-    <button class="btn" id="off_upload">Upload Official Standings</button>
-    <button class="btn outline" id="off_clear" title="Show your computed latest again">Clear Official Latest</button>
+  <div class="grid">
+    <div class="card">
+      <div class="head">Chess Leaderboard</div>
+      <div class="body">
+        <table id="table">
+          <thead>
+            <tr><th class="col-no">No</th><th>Player</th><th class="col-games">Games</th><th class="col-rating">Rating</th></tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td class="hint" colspan="4">No players yet — upload a Chess-Results file below.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="head">Latest Tournaments</div>
+      <div class="body" id="tour-body">
+        <div id="officialLatestMount"></div>
+        <div class="hint">This panel shows only your uploaded Official Standings and never the computed tournaments.</div>
+      </div>
+    </div>
   </div>
-  <div class="debug" id="off_msg"></div>
+
+  <div class="admin">
+    <h3>Update Leaderboard</h3>
+    <div class="flex">
+      <input id="file" type="file" accept=".csv,.xlsx,.xls"/>
+      <input id="tname" type="text" placeholder="Tournament name (defaults to file name)"/>
+      <button class="btn" id="process">Upload &amp; Update Ratings</button>
+      <button class="btn outline" id="reset">Undo last upload</button>
+      <button class="btn outline" id="backup">Download Backup</button>
+      <button class="btn outline" id="restore">Restore Backup</button>
+      <input id="restore_file" type="file" accept="application/json" style="display:none">
+      <input id="restore_url" type="text" placeholder="or paste backup URL (optional)" style="min-width:340px">
+    </div>
+    <div class="hint" style="margin-top:6px">CSV &amp; Excel supported. We aggregate rounds and ignore duplicates. K=24, start rating=2000.</div>
+    <div class="debug" id="msg">Ready.</div>
+  </div>
+
+  <div class="admin" style="margin-top:16px">
+    <h3>Manage Players</h3>
+    <div class="flex">
+      <select id="playerSelect"></select>
+      <input id="playerNewName" placeholder="New player name" type="text"/>
+      <button class="btn" id="btnRenamePlayer">Rename Player</button>
+      <select id="playerTitleSelect">
+        <option value="">— Add/Change Title —</option>
+        <option>GM</option><option>IM</option><option>FM</option><option>CM</option><option>NM</option>
+        <option>WGM</option><option>WIM</option><option>WFM</option><option>WCM</option><option>PM</option>
+      </select>
+      <button class="btn outline" id="btnApplyTitle">Apply Title</button>
+    </div>
+    <div class="hint">Titles show as <span class="pTitle">GM</span> before the name.</div>
+  </div>
+
+  <div class="admin" id="officialUploadPanel" style="margin-top:16px">
+    <h3>Upload Official Standings (Latest Only)</h3>
+    <div class="hint" style="margin:4px 0 10px">Replaces the Latest panel only. Leaderboard ratings stay untouched.</div>
+    <div class="flex">
+      <input id="off_title" type="text" placeholder="Tournament (e.g., Piala Gubernur 2025 • Round 3)"/>
+      <input id="off_file" type="file" accept=".csv,.xlsx,.xls"/>
+      <button class="btn" id="off_upload">Upload Official Standings</button>
+      <button class="btn outline" id="off_remove_latest" title="Remove the most recent official card">Remove Latest</button>
+    </div>
+    <div class="debug" id="off_msg"></div>
+  </div>
+
+  <div class="footer">Data is stored locally in your browser. Use Backup to move computers.</div>
 </div>
 
-<div class="footer">Ratings = Elo K=24. Data is stored locally; use Backup to move computers.</div>
-</div>
 <script>
-'use strict';
-(function(){
-  // --- Error log ---
-  window.addEventListener('error', e=>{
-    const m = document.getElementById('msg');
-    if(m) m.textContent = 'Error: '+ (e.error?.message || e.message || e.toString());
-  });
-  window.addEventListener('unhandledrejection', e=>{
-    const m = document.getElementById('msg');
-    if(m) m.textContent = 'Async error: '+ (e.reason?.message || e.reason || 'Unknown');
-  });
-
-  // Toast
-  function showToast(text='DONE ✅', ms=1800){
-    const el = document.getElementById('toast');
-    if(!el) return; el.textContent = text; el.classList.add('show');
-    setTimeout(()=> el.classList.remove('show'), ms);
-  }
-
-  const K=24, R0=1500, MAX_TOUR=5;
-  const state=load()||{ratings:{},games:{},tournaments:[], tourStore:{}};
-  const $=s=>document.querySelector(s);
-  const tbody=$('#tbody'), tBody=$('#tour-body');
-
-  function save(){ localStorage.setItem('mcl_state',JSON.stringify(state)); }
-  function load(){ try{ return JSON.parse(localStorage.getItem('mcl_state')||'null'); }catch(e){ return null; } }
-
-  function expected(ra,rb){ return 1/(1+Math.pow(10,(rb-ra)/400)); }
-  function cleanName(s){ if(!s) return ''; s=String(s).trim(); return s.endsWith(',')? s.slice(0,-1): s; }
-  function stripTitle(full){
-    const s=String(full||'').trim();
-    const m=s.match(/^(GM|IM|FM|CM|NM|WGM|WIM|WFM|WCM|PM)\b\s*(.*)$/i);
-    return m? (m[2]||'').trim(): s;
-  }
-
-  // FIXED: normalize results with global replacements
-  function normRes(s){
-    if(!s) return null;
-    s=String(s).toLowerCase();
-    s=s.replace(/\s+/g,'')               // remove spaces
-       .replace(/[—–]/g,'-')             // dashes
-       .replace(/½/g,'1/2')              // all half chars
-       .replace(/0\.5/g,'1/2');          // all decimals
-    // Accept common tokens for draw too
-    if(s==='draw' || s==='=') s='1/2-1/2';
-    return (s==='1-0'||s==='0-1'||s==='1/2-1/2')? s : null;
-  }
-
-  function collapseSpaces(str){ let out='',prev=false; for(const ch of String(str||'')){ const sp=(ch===' '||ch==='\t'||ch==='\n'||ch==='\r'); if(sp){ if(!prev){ out+=' '; prev=true; } } else { out+=ch; prev=false; } } return out; }
-  const normKey = s => collapseSpaces(String(s||'').toLowerCase().trim());
-
-  function formatName(full){
-    const s = String(full||'').trim();
-    const m = s.match(/^(GM|IM|FM|CM|NM|WGM|WIM|WFM|WCM|PM)\b\s*(.*)$/i);
-    if(m){ return `<span class="pTitle">${m[1].toUpperCase()}</span>${m[2]||''}`; }
-    return s;
-  }
-
-  function detectDelim(head){
-    const cands=[',',';','\t','|'];
-    for(const d of cands){
-      const parts=head.split(d).map(x=>x.toLowerCase());
-      if(parts.some(x=>x.includes('white'))&&parts.some(x=>x.includes('black'))&&parts.some(x=> (x.includes('result')||x.includes('res')||x.includes('score')) )) return d;
-    }
-    return ',';
-  }
-
-  function parseCSV(text){
-    const lines = String(text).split(/\r?\n/).filter(l=>l.trim().length);
-    if(!lines.length) return {rows:[],debug:'No lines'};
-    let headerIdx=0; let delim=detectDelim(lines[0]);
-    for(let i=0;i<Math.min(20,lines.length);i++){
-      const parts=lines[i].split(delim).map(x=>x.trim().toLowerCase());
-      if(parts.some(x=>x.includes('white'))&&parts.some(x=>x.includes('black'))&&parts.some(x=> (x.includes('result')||x.includes('res')||x.includes('score')) )){ headerIdx=i; break; }
-    }
-    const headers=lines[headerIdx].split(delim).map(x=>x.trim()); const lc=headers.map(h=>h.toLowerCase());
-    const idxW=lc.findIndex(h=>String(h||'').toLowerCase().includes('white')),
-          idxB=lc.findIndex(h=>String(h||'').toLowerCase().includes('black')),
-          idxR=lc.findIndex(h=> (h.includes('result')||h.includes('res')||h.includes('score')) ),
-          idxRound=lc.findIndex(h=> (h.includes('round')||h==='rd'||h.includes('rd')) );
-    const idxWTitle = lc.findIndex(h=> (h.includes('title') && h.includes('white')) || h==='wtitle' || h==='white title');
-    const idxBTitle = lc.findIndex(h=> (h.includes('title') && h.includes('black')) || h==='btitle' || h==='black title');
-    if(idxW<0||idxB<0||idxR<0) return {rows:[],debug:'Missing White/Black/Result header'};
-    const rows=[];
-    for(let i=headerIdx+1;i<lines.length;i++){
-      const c=lines[i].split(delim);
-      let W=cleanName(c[idxW]), B=cleanName(c[idxB]);
-      if(idxWTitle>=0){ const t=(c[idxWTitle]||'').trim(); if(t) W=(t+' '+W).trim(); }
-      if(idxBTitle>=0){ const t=(c[idxBTitle]||'').trim(); if(t) B=(t+' '+B).trim(); }
-      const R=normRes(c[idxR]); if(!W||!B||!R) continue;
-      const round=idxRound>=0? String(c[idxRound]||'').trim():'';
-      rows.push({W,B,R,round});
-    }
-    return {rows,debug:`CSV games: ${rows.length} • Round col: ${idxRound>=0?'yes':'no'}`};
-  }
-
-  async function parseXLSX(file){
-    if(!window.XLSX) throw new Error('XLSX library not loaded.');
-    const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array'});
-    let rows=[], notes=[];
-    for(const name of wb.SheetNames){
-      const A=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1});
-      let headerIdx=-1;
-      for(let i=0;i<Math.min(20,A.length);i++){
-        const line=(A[i]||[]).map(v=>String(v||'').toLowerCase());
-        if(line.some(x=>x.includes('white'))&&line.some(x=>x.includes('black'))&&line.some(x=> (x.includes('result')||x.includes('res')||x.includes('score')) )){ headerIdx=i; break; }
-      }
-      if(headerIdx===-1){ notes.push(`Sheet ${name}: no header`); continue; }
-      const headers=A[headerIdx].map(v=>String(v||'')); const lc=headers.map(h=>h.toLowerCase());
-      const idxW=lc.findIndex(h=>String(h||'').toLowerCase().includes('white')),
-            idxB=lc.findIndex(h=>String(h||'').toLowerCase().includes('black')),
-            idxR=lc.findIndex(h=> (h.includes('result')||h.includes('res')||h.includes('score')) ),
-            idxRound=lc.findIndex(h=> (h.includes('round')||h==='rd'||h.includes('rd')) );
-      const idxWTitle = lc.findIndex(h=> (h.includes('title') && h.includes('white')) || h==='wtitle' || h==='white title');
-      const idxBTitle = lc.findIndex(h=> (h.includes('title') && h.includes('black')) || h==='btitle' || h==='black title');
-      if(idxW<0||idxB<0||idxR<0){ notes.push(`Sheet ${name}: missing cols`); continue; }
-      const countBefore=rows.length;
-      for(let i=headerIdx+1;i<A.length;i++){
-        const r=A[i]||[];
-        let W=cleanName(r[idxW]), B=cleanName(r[idxB]);
-        if(idxWTitle>=0){ const t=String(r[idxWTitle]||'').trim(); if(t) W=(t+' '+W).trim(); }
-        if(idxBTitle>=0){ const t=String(r[idxBTitle]||'').trim(); if(t) B=(t+' '+B).trim(); }
-        const R=normRes(r[idxR]); if(!W||!B||!R) continue;
-        const round=idxRound>=0? String(r[idxRound]||'').trim():'';
-        rows.push({W,B,R,round});
-      }
-      notes.push(`Sheet ${name}: +${rows.length-countBefore}`);
-    }
-    return {rows,debug:rows.length?`Excel ok • ${notes.join(' • ')}`:`Excel: no usable sheet`};
-  }
-
-  // Ratings (draw = 0.5 each)
-  function expected(ra,rb){ return 1/(1+Math.pow(10,(rb-ra)/400)); }
-  function applyGame(w,b,r){
-    const rw=state.ratings[w]??R0, rb=state.ratings[b]??R0;
-    const Ew=expected(rw,rb);
-    const Sw=(r==='1-0')?1:(r==='0-1')?0:0.5;
-    const nw=rw+K*(Sw-Ew), nb=rb+K*((1-Sw)-(1-Ew));
-    state.ratings[w]=Math.round(nw*10)/10; state.ratings[b]=Math.round(nb*10)/10;
-    state.games[w]=(state.games[w]||0)+1; state.games[b]=(state.games[b]||0)+1;
-  }
-
-  function dedupeTournaments(){
-    const seen=new Set();
-    state.tournaments=(state.tournaments||[]).filter(t=>{
-      const k=normKey(t.name); if(!k||seen.has(k)) return false; seen.add(k); return true;
-    });
-  }
-  function upsertTournament(name,podium,final){
-    const k=normKey(name);
-    state.tournaments=(state.tournaments||[]).filter(t=>normKey(t.name)!==k);
-    state.tournaments.unshift({name,at:new Date().toISOString(),podium,final:!!final});
-    state.tournaments=state.tournaments.slice(0,MAX_TOUR);
-  }
-  function podiumFrom(scores){
-    return Object.entries(scores).map(([n,s])=>({n,s}))
-      .sort((a,b)=> b.s-a.s || a.n.localeCompare(b.n)).slice(0,3);
-  }
-
-  // Tiebreak helpers
-  const sum=a=>a.reduce((x,y)=>x+y,0);
-  const buchholz=(p,oppScores)=>sum(oppScores[p]||[]);
-  const medianBuchholz=(p,oppScores)=>{const arr=(oppScores[p]||[]).slice().sort((a,b)=>a-b); if(arr.length<=2) return sum(arr); arr.shift(); arr.pop(); return sum(arr);};
-  const sonnebornBerger=(p,vs,finalScores)=> (vs[p]||[]).reduce((acc,g)=> acc + (finalScores[g.opp]||0)*g.result, 0);
-  const progressiveScore=(p,byRound)=>{const r=(byRound[p]||[]).slice(); let t=0,run=0; for(let i=0;i<r.length;i++){ run+=(r[i]||0); t+=run; } return t;};
-  const countWins=(p,vs)=>(vs[p]||[]).filter(g=>g.result===1).length;
-
-  function aggregateTournament(name, rows, totalRounds, finalizeNow){
-    const key = normKey(name);
-    if(!state.tourStore) state.tourStore={};
-    const rec = state.tourStore[key] || { name, scores:{}, games:{}, totalRounds:null, final:false };
-
-    if(finalizeNow) rec.final = true;
-    if(totalRounds && !rec.totalRounds) rec.totalRounds = totalRounds;
-
-    const accepted = [];
-    if(rec.final){ return { podium: podiumFrom(rec.scores), accepted, final:true }; }
-
-    const vs={}, opponentsScores={}, byRound={};
-    let maxRound = 0;
-
-    for(const r of rows){
-      const W=cleanName(r.W), B=cleanName(r.B), R=r.R;
-      const roundStr = String(r.round||''); const round = parseInt(roundStr,10);
-      if(!isNaN(round)) maxRound = Math.max(maxRound, round);
-
-      const gkey = `${W}#${B}#${R}#${roundStr}`;
-      if(rec.games[gkey]) continue;
-      rec.games[gkey] = true; accepted.push({W,B,R,round});
-
-      const sW = (R==='1-0')?1:(R==='0-1')?0:0.5; const sB = 1 - sW;
-      rec.scores[W] = (rec.scores[W]||0) + sW;
-      rec.scores[B] = (rec.scores[B]||0) + sB;
-
-      (vs[W]=vs[W]||[]).push({opp:B, result:sW});
-      (vs[B]=vs[B]||[]).push({opp:W, result:sB});
-
-      if(!isNaN(round) && round>0){
-        const idx = round-1;
-        (byRound[W]=byRound[W]||[])[idx] = (byRound[W][idx]||0) + sW;
-        (byRound[B]=byRound[B]||[])[idx] = (byRound[B][idx]||0) + sB;
-      }
-    }
-
-    if(rec.totalRounds && maxRound >= rec.totalRounds){ rec.final = true; }
-
-    const finalScores = {...rec.scores};
-    for(const p of Object.keys(finalScores)){
-      const opps = (vs[p]||[]).map(g=>g.opp);
-      opponentsScores[p] = opps.map(o => finalScores[o] || 0);
-    }
-
-    const standings = Object.keys(finalScores).map(p=>{
-      const TB1 = buchholz(p, opponentsScores);
-      const TB2 = medianBuchholz(p, opponentsScores);
-      const TB3 = sonnebornBerger(p, vs, finalScores);
-      const TB4 = progressiveScore(p, byRound);
-      const TB5 = countWins(p, vs);
-      return { name:p, points:+(finalScores[p]||0), TB1:+TB1, TB2:+TB2, TB3:+TB3, TB4:+TB4, TB5:+TB5 };
-    }).sort((a,b)=>
-      b.points - a.points ||
-      b.TB1 - a.TB1 ||
-      b.TB2 - a.TB2 ||
-      b.TB3 - a.TB3 ||
-      b.TB4 - a.TB4 ||
-      b.TB5 - a.TB5 ||
-      a.name.localeCompare(b.name)
-    );
-
-    rec.standings = standings;               // full list
-    rec.podium = standings.slice(0,3);       // top 3
-    rec.name = name;
-    state.tourStore[key]=rec;
-
-    const podium = rec.podium.map(r => ({ n:r.name, s:r.points }));
-    return { podium, accepted, final: rec.final };
-  }
-
-  function recomputeAllRatings(){
-    state.ratings = {}; state.games = {};
-    const order = [...(state.tournaments||[])].sort((a,b)=> new Date(a.at)-new Date(b.at));
-    for(const t of order){
-      const rec = state.tourStore && state.tourStore[normKey(t.name)];
-      if(!rec) continue;
-      for(const gkey of Object.keys(rec.games||{})){
-        const [W,B,R] = gkey.split('#');
-        if(W && B && (R==='1-0'||R==='0-1'||R==='1/2-1/2')) applyGame(W,B,R);
-      }
-    }
-  }
-
-  function processRows(rows,tournamentName,totalRounds,finalizeNow){
-    if(!rows.length){ alert('No valid games found'); return; }
-    const {podium, accepted, final} = aggregateTournament(tournamentName, rows, totalRounds, finalizeNow);
-    for(const r of accepted){ applyGame(r.W, r.B, r.R); }
-    upsertTournament(tournamentName, podium, final);
-    const key = normKey(tournamentName);
-    state.lastImport = {
-      key, name: tournamentName,
-      acceptedKeys: accepted.map(r=> `${cleanName(r.W)}#${cleanName(r.B)}#${r.R}#${r.round||''}`),
-      at: new Date().toISOString()
-    };
-    save(); render();
-    document.getElementById('msg').textContent = `Added ${accepted.length} game(s) to ${tournamentName}${final?' • FINALIZED':''}.`;
-    showToast('Done! ✅');
-  }
-
-  function undoLastUpload(){
-    const LI = state.lastImport;
-    if(!LI || !LI.acceptedKeys || !LI.acceptedKeys.length){ alert('Nothing to undo'); return; }
-    const key = LI.key;
-    const rec = state.tourStore && state.tourStore[key];
-    if(!rec){ alert('Nothing to undo'); state.lastImport=null; return; }
-    let removed = 0;
-    for(const gk of LI.acceptedKeys){ if(rec.games[gk]){ delete rec.games[gk]; removed++; } }
-    const sc = {}; let maxRound = 0;
-    for(const gkey of Object.keys(rec.games)){
-      const p = gkey.split('#');
-      const W=p[0], B=p[1], R=p[2], roundStr=p[3]||'';
-      const sW=(R==='1-0')?1:(R==='0-1')?0:0.5; const sB=1-sW;
-      sc[W]=(sc[W]||0)+sW; sc[B]=(sc[B]||0)+sB;
-      const rnum=parseInt(roundStr,10); if(!isNaN(rnum)) maxRound=Math.max(maxRound,rnum);
-    }
-    rec.scores = sc;
-    if(rec.totalRounds){ rec.final = maxRound >= rec.totalRounds; }
-    // rebuild standings
-    const rows = []; aggregateTournament(rec.name, rows, rec.totalRounds, rec.final);
-    if(Object.keys(rec.games).length===0){
-      delete state.tourStore[key];
-      state.tournaments = (state.tournaments||[]).filter(t=> normKey(t.name)!==key);
-    } else {
-      upsertTournament(rec.name, podiumFrom(rec.scores), rec.final);
-    }
-    state.lastImport = null; recomputeAllRatings(); save(); render();
-    document.getElementById('msg').textContent = `Undid ${removed} game(s) from "${rec ? rec.name : LI.name}".`;
-    showToast('Undone');
-  }
-
-  function renameTournament(oldName, newName){
-    const oldK = normKey(oldName), newK = normKey(newName);
-    if(!oldK || !newK){ alert('Pick a tournament and enter a new name.'); return; }
-    if(oldK === newK){ alert('That is already the name.'); return; }
-    const A = state.tourStore[oldK]; if(!A){ alert('Tournament not found.'); return; }
-    const B = state.tourStore[newK];
-    if(B){
-      const merged = { name:newName, games:{}, scores:{}, totalRounds: B.totalRounds || A.totalRounds || null, final: !!(A.final || B.final) };
-      Object.assign(merged.games, B.games||{});
-      for(const k of Object.keys(A.games||{})) merged.games[k] = true;
-      const sc={};
-      for(const gkey of Object.keys(merged.games)){
-        const [W,Bp,R] = gkey.split('#');
-        const sW=(R==='1-0')?1:(R==='0-1')?0:0.5; const sB=1-sW;
-        sc[W]=(sc[W]||0)+sW; sc[Bp]=(sc[Bp]||0)+sB;
-      }
-      merged.scores=sc;
-      state.tourStore[newK]=merged; delete state.tourStore[oldK];
-    } else { A.name=newName; state.tourStore[newK]=A; delete state.tourStore[oldK]; }
-    state.tournaments=(state.tournaments||[]).filter(t=>{ const k=normKey(t.name); return k!==oldK && k!==newK; });
-    const rec = state.tourStore[newK]; upsertTournament(newName, podiumFrom(rec.scores||{}), rec.final);
-    recomputeAllRatings(); save(); render();
-    document.getElementById('msg').textContent = `Renamed to "${newName}" and recomputed ratings.`;
-    showToast('Tournament renamed ✅');
-  }
-
-  // Players
-  function playerNames(){
-    const set = new Set();
-    for(const k in (state.tourStore||{})){
-      const rec = state.tourStore[k];
-      for(const gkey of Object.keys(rec.games||{})){
-        const [W,B] = gkey.split('#'); set.add(W); set.add(B);
-      }
-    }
-    return [...set].sort((a,b)=> a.localeCompare(b));
-  }
-  function populatePlayerSelect(){
-    const sel = document.getElementById('playerSelect'); if(!sel) return;
-    const names = playerNames();
-    sel.innerHTML = names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
-    const input = document.getElementById('playerNewName'); if(names.length && input) input.value = stripTitle(names[0]);
-  }
-  function renamePlayer(oldName, newName){
-    oldName = cleanName(oldName); newName = cleanName(newName);
-    if(!oldName || !newName){ alert('Provide both the current and new player name.'); return; }
-    if(oldName===newName){ alert('That is already the name.'); return; }
-    for(const key in (state.tourStore||{})){
-      const rec = state.tourStore[key]; const newGames={};
-      for(const gkey of Object.keys(rec.games||{})){
-        const [W,B,R,round=''] = gkey.split('#');
-        const W2 = (W===oldName)? newName : W;
-        const B2 = (B===oldName)? newName : B;
-        const nk = `${W2}#${B2}#${R}#${round}`; newGames[nk] = true;
-      }
-      rec.games = newGames;
-      const sc={};
-      for(const g of Object.keys(rec.games)){
-        const [W,B,R] = g.split('#');
-        const sW=(R==='1-0')?1:(R==='0-1')?0:0.5; const sB=1-sW;
-        sc[W]=(sc[W]||0)+sW; sc[B]=(sc[B]||0)+sB;
-      }
-      rec.scores = sc;
-    }
-    state.lastImport = null; recomputeAllRatings(); save(); render();
-    document.getElementById('msg').textContent = `Player renamed: ${oldName} → ${newName}`;
-    showToast('Player updated ✅'); populatePlayerSelect();
-  }
-  function setPlayerTitle(name, title){
-    if(!title){ alert('Pick a title.'); return; }
-    const base = stripTitle(name);
-    const newName = `${title} ${base}`.trim();
-    renamePlayer(name, newName);
-  }
-
-  function podiumToHTML(p){
-    const slot = (medal,entry)=> `<div class="slot"><span class="medal">${medal}</span><span class="name">${formatName(entry.n)}</span><span class="score">${entry.s} pts</span></div>`;
-    let html = '<div class="podium">';
-    if(p[0]) html += slot('🥇', p[0]); if(p[1]) html += slot('🥈', p[1]); if(p[2]) html += slot('🥉', p[2]);
-    html += '</div>'; return html;
-  }
-
-  function render(){
-  // Preserve existing officialLatest content (if any)
-  const __officialMount = document.getElementById('officialLatestMount');
-  const __preservedOfficial = __officialMount ? __officialMount.innerHTML : '';
-
-    dedupeTournaments();
-
-    // Ratings leaderboard
-    const list=Object.entries(state.ratings).map(([n,r])=>({n,r}))
-      .sort((a,b)=>b.r-a.r||a.n.localeCompare(b.n));
-    tbody.innerHTML=list.length? list.map((p,i)=>`<tr class="${i%2?'row-alt':''}"><td class="col-no">${i+1}</td><td>${formatName(p.n)}</td><td class="col-rating"><span class="badge">${Math.round(p.r)}</span></td></tr>`).join('') : '<tr><td colspan="3" class="hint">No players yet</td></tr>';
-
-    // Tournaments: show Top-3, hide rest behind <details>
-    if(!state.tournaments.length){
-      tBody.innerHTML=`<div id="officialLatestMount">${__preservedOfficial}</div>` + '<div class="hint">Nothing yet</div>';
-  // Ensure officialLatestMount exists
-  if (!document.getElementById('officialLatestMount')) {
-    const div = document.createElement('div');
-    div.id = 'officialLatestMount';
-    tBody.prepend(div);
-  }
-
-    } else {
-      tBody.innerHTML = state.tournaments.map(t=>{
-        const rec = state.tourStore && state.tourStore[normKey(t.name)];
-        const finalPill = t.final? '<span class="pill">FINAL</span>' : '';
-        const podium = (rec?.podium||[]).map(r=>({n:r.name||r.n, s:r.points??r.s}));
-        const full = rec?.standings||[];
-        // Build hidden table for full standings
-        const rowsFull = full.map((r,idx)=>`
-          <tr>
-            <td>${idx+1}</td>
-            <td>${formatName(r.name)}</td>
-            <td>${r.points.toFixed(1)}</td>
-            <td>${r.TB1.toFixed(1)}</td>
-            <td>${r.TB2.toFixed(1)}</td>
-            <td>${r.TB3.toFixed(1)}</td>
-            <td>${r.TB4.toFixed(1)}</td>
-            <td>${r.TB5}</td>
-          </tr>`).join('');
-
-        const fullTable = `
-          <details>
-            <summary><span class="summary-btn">Show full standings</span></summary>
-            <div style="margin-top:8px;overflow:auto">
-              <table style="min-width:720px;border-collapse:collapse;width:100%">
-                <thead>
-                  <tr>
-                    <th style="text-align:left;padding:6px 8px">Rk.</th>
-                    <th style="text-align:left;padding:6px 8px">Name</th>
-                    <th style="text-align:left;padding:6px 8px">Pts.</th>
-                    <th style="text-align:left;padding:6px 8px">TB1</th>
-                    <th style="text-align:left;padding:6px 8px">TB2</th>
-                    <th style="text-align:left;padding:6px 8px">TB3</th>
-                    <th style="text-align:left;padding:6px 8px">TB4</th>
-                    <th style="text-align:left;padding:6px 8px">TB5</th>
-                  </tr>
-                </thead>
-                <tbody>${rowsFull || '<tr><td colspan="8" class="hint">No games yet</td></tr>'}</tbody>
-              </table>
-            </div>
-          </details>`;
-
-        return `
-          <div style="padding:8px 0;border-bottom:1px solid var(--line)">
-            <div style="display:flex;gap:8px;align-items:center">
-              <strong>${t.name}</strong>${finalPill}
-            </div>
-            <div class="hint">${new Date(t.at).toLocaleString()}</div>
-            ${podiumToHTML(podium)}
-            ${fullTable}
-          </div>`;
-      }).join('');
-    }
-
-    populateEditSelect();
-    populatePlayerSelect();
-  
-  // Repaint uploaded latest from storage after layout rebuild
-  try {
-    const __saved = JSON.parse(localStorage.getItem('officialLatest') || 'null');
-    if (__saved && window.renderOfficialLatest) { window.renderOfficialLatest(__saved); }
-  } catch {}
+// Toast
+function showToast(text='DONE ✅', ms=1800){
+  const el = document.getElementById('toast');
+  if(!el) return; el.textContent = text; el.classList.add('show');
+  setTimeout(()=> el.classList.remove('show'), ms);
 }
 
-  function populateEditSelect(){
-    const sel = document.getElementById('editSelect'); if(!sel) return;
-    const names = [...new Set((state.tournaments||[]).map(t=>t.name))].sort((a,b)=> a.localeCompare(b));
-    sel.innerHTML = names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
-    const input = document.getElementById('editNewName'); if(names.length && input) input.value = names[0];
+// State
+const K=24, R0=2000, STORE='mcl_state_clean_v1';
+
+function load(){ try{ return JSON.parse(localStorage.getItem(STORE)||'null'); }catch(e){ return null; } }
+function save(st){ localStorage.setItem(STORE, JSON.stringify(st)); }
+
+// initial state
+const state = load() || {
+  ratings: {},   // name -> rating
+  games: {},     // name -> total games
+  tournaments: [], // [{name, at, games:[{W,B,R,round}], sigs:{}}]
+  lastImport: null
+};
+
+function expected(ra,rb){ return 1/(1+Math.pow(10,(rb-ra)/400)); }
+function cleanName(s){ if(!s) return ''; s=String(s).trim(); return s.endsWith(',')? s.slice(0,-1): s; }
+function stripTitle(full){
+  const s=String(full||'').trim();
+  const m=s.match(/^(GM|IM|FM|CM|NM|WGM|WIM|WFM|WCM|PM)\b\s*(.*)$/i);
+  return m? (m[2]||'').trim(): s;
+}
+function formatName(full){
+  const s = String(full||'').trim();
+  const m = s.match(/^(GM|IM|FM|CM|NM|WGM|WIM|WFM|WCM|PM)\b\s*(.*)$/i);
+  if(m){ return `<span class="pTitle">${m[1].toUpperCase()}</span>${m[2]||''}`; }
+  return s;
+}
+
+function normRes(s){
+  if(!s) return null;
+  s=String(s).toLowerCase();
+  s=s.replace(/\s+/g,'').replace(/[—–]/g,'-').replace(/½/g,'1/2').replace(/0\.5/g,'1/2');
+  if(s==='draw'||s==='=') s='1/2-1/2';
+  return (s==='1-0'||s==='0-1'||s==='1/2-1/2')? s : null;
+}
+
+function detectDelim(head){
+  const cands=[',',';','\t','|'];
+  for(const d of cands){
+    const parts=head.split(d).map(x=>x.toLowerCase());
+    if(parts.some(x=>x.includes('white'))&&parts.some(x=>x.includes('black'))&&parts.some(x=> (x.includes('result')||x.includes('res')||x.includes('score')) )) return d;
   }
+  return ',';
+}
 
-  // Wire events
-  window.addEventListener('DOMContentLoaded', ()=>{
-    document.getElementById('btnDelete')?.addEventListener('click', ()=>{
-      const sel = document.getElementById('editSelect');
-      if(!sel || !sel.value){ alert('No tournament selected.'); return; }
-      deleteTournament(sel.value);
-    });
-    document.getElementById('btnRename')?.addEventListener('click', ()=>{
-      const sel=document.getElementById('editSelect');
-      const input=document.getElementById('editNewName');
-      if(!sel?.value||!input?.value){ alert('Pick a tournament and type a new name.'); return; }
-      renameTournament(sel.value, input.value);
-    });
+function parseCSV(text){
+  const lines = String(text).split(/\r?\n/).filter(l=>l.trim().length);
+  if(!lines.length) return {rows:[], debug:'No lines'};
+  let headerIdx=0; let delim=detectDelim(lines[0]);
+  for(let i=0;i<Math.min(20,lines.length);i++){
+    const parts=lines[i].split(delim).map(x=>x.trim().toLowerCase());
+    if(parts.some(x=>x.includes('white'))&&parts.some(x=>x.includes('black'))&&parts.some(x=> (x.includes('result')||x.includes('res')||x.includes('score')) )){ headerIdx=i; break; }
+  }
+  const headers=lines[headerIdx].split(delim).map(x=>x.trim()); const lc=headers.map(h=>h.toLowerCase());
+  const idxW=lc.findIndex(h=>h.includes('white'));
+  const idxB=lc.findIndex(h=>h.includes('black'));
+  const idxR=lc.findIndex(h=> (h.includes('result')||h.includes('res')||h.includes('score')) );
+  const idxRound=lc.findIndex(h=> (h.includes('round')||h==='rd'||h.includes('rd')) );
+  const idxWTitle=lc.findIndex(h=> (h.includes('title') && h.includes('white')) || h==='wtitle' || h==='white title');
+  const idxBTitle=lc.findIndex(h=> (h.includes('title') && h.includes('black')) || h==='btitle' || h==='black title');
+  if(idxW<0||idxB<0||idxR<0) return {rows:[], debug:'Missing White/Black/Result header'};
+  const rows=[];
+  for(let i=headerIdx+1;i<lines.length;i++){
+    const c=lines[i].split(delim);
+    let W=cleanName(c[idxW]), B=cleanName(c[idxB]);
+    if(idxWTitle>=0){ const t=(c[idxWTitle]||'').trim(); if(t) W=(t+' '+W).trim(); }
+    if(idxBTitle>=0){ const t=(c[idxBTitle]||'').trim(); if(t) B=(t+' '+B).trim(); }
+    const R=normRes(c[idxR]); if(!W||!B||!R) continue;
+    const round=idxRound>=0? String(c[idxRound]||'').trim():'';
+    rows.push({W,B,R,round});
+  }
+  return {rows, debug:`CSV games: ${rows.length} • Round col: ${idxRound>=0?'yes':'no'}`};
+}
 
-    document.getElementById('process')?.addEventListener('click', async ()=>{
-      const f = document.getElementById('file')?.files?.[0]; if(!f){ alert('Choose a file'); return; }
-      const raw = document.getElementById('tname')?.value || f.name; const dot = raw.lastIndexOf('.'); const tname = dot>0? raw.substring(0,dot): raw;
-      const totalRounds = parseInt(document.getElementById('totalRounds')?.value,10) || null;
-      const finalizeNow = !!document.getElementById('finalizeNow')?.checked;
-      try{
-        let parsed;
-        const lower = (f.name||'').toLowerCase();
-        if(lower.endsWith('.xlsx')||lower.endsWith('.xls')) parsed = await parseXLSX(f); else parsed = parseCSV(await f.text());
-        document.getElementById('msg').textContent = parsed.debug || 'Parsed.';
-        processRows(parsed.rows, tname, totalRounds, finalizeNow);
-      }catch(err){ document.getElementById('msg').textContent = 'Error: '+ (err.message||String(err)); }
-    });
+async function parseXLSX(file){
+  if(!window.XLSX) throw new Error('XLSX library not loaded.');
+  const data=await file.arrayBuffer(); const wb=XLSX.read(data,{type:'array'});
+  let rows=[], notes=[];
+  for(const name of wb.SheetNames){
+    const A=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1});
+    let headerIdx=-1;
+    for(let i=0;i<Math.min(20,A.length);i++){
+      const line=(A[i]||[]).map(v=>String(v||'').toLowerCase());
+      if(line.some(x=>x.includes('white'))&&line.some(x=>x.includes('black'))&&line.some(x=> (x.includes('result')||x.includes('res')||x.includes('score')) )){ headerIdx=i; break; }
+    }
+    if(headerIdx===-1){ notes.push(`Sheet ${name}: no header`); continue; }
+    const headers=A[headerIdx].map(v=>String(v||'')); const lc=headers.map(h=>h.toLowerCase());
+    const idxW=lc.findIndex(h=>h.includes('white'));
+    const idxB=lc.findIndex(h=>h.includes('black'));
+    const idxR=lc.findIndex(h=> (h.includes('result')||h.includes('res')||h.includes('score')) );
+    const idxRound=lc.findIndex(h=> (h.includes('round')||h==='rd'||h.includes('rd')) );
+    const idxWTitle=lc.findIndex(h=> (h.includes('title') && h.includes('white')) || h==='wtitle' || h==='white title');
+    const idxBTitle=lc.findIndex(h=> (h.includes('title') && h.includes('black')) || h==='btitle' || h==='black title');
+    if(idxW<0||idxB<0||idxR<0){ notes.push(`Sheet ${name}: missing cols`); continue; }
+    const countBefore=rows.length;
+    for(let i=headerIdx+1;i<A.length;i++){
+      const r=A[i]||[];
+      let W=cleanName(r[idxW]), B=cleanName(r[idxB]);
+      if(idxWTitle>=0){ const t=String(r[idxWTitle]||'').trim(); if(t) W=(t+' '+W).trim(); }
+      if(idxBTitle>=0){ const t=String(r[idxBTitle]||'').trim(); if(t) B=(t+' '+B).trim(); }
+      const R=normRes(r[idxR]); if(!W||!B||!R) continue;
+      const round=idxRound>=0? String(r[idxRound]||'').trim():'';
+      rows.push({W,B,R,round});
+    }
+    notes.push(`Sheet ${name}: +${rows.length-countBefore}`);
+  }
+  return {rows, debug:rows.length?`Excel ok • ${notes.join(' • ')}`:`Excel: no usable sheet`};
+}
 
-    document.getElementById('demo')?.addEventListener('click', ()=>{
-      const demo='White;Black;Result;Round\nAAA;BBB;1-0;1\nCCC;DDD;1/2-1/2;1\nBBB;CCC;0-1;2';
-      const {rows,debug}=parseCSV(demo);
-      document.getElementById('msg').textContent=debug;
-      processRows(rows,'Demo Event', 2, true);
-    });
+function applyGame(w,b,r){
+  const rw=state.ratings[w]??R0, rb=state.ratings[b]??R0;
+  const Ew=expected(rw,rb);
+  const Sw=(r==='1-0')?1:(r==='0-1')?0:0.5;
+  const nw=rw+K*(Sw-Ew), nb=rb+K*((1-Sw)-(1-Ew));
+  state.ratings[w]=Math.round(nw*10)/10; state.ratings[b]=Math.round(nb*10)/10;
+  state.games[w]=(state.games[w]||0)+1; state.games[b]=(state.games[b]||0)+1;
+}
 
-    document.getElementById('reset')?.addEventListener('click', ()=>{ undoLastUpload(); });
-    document.getElementById('backup')?.addEventListener('click', ()=>{
-      const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leaderboard_backup.json'; a.click();
-      showToast('Backup downloaded');
-    });
+function recomputeAll(){
+  state.ratings={}; state.games={};
+  const ordered=[...(state.tournaments||[])].sort((a,b)=> new Date(a.at)-new Date(b.at));
+  for(const t of ordered){
+    for(const g of (t.games||[])){
+      if(g && g.W && g.B && g.R) applyGame(g.W, g.B, g.R);
+    }
+  }
+}
 
-    document.getElementById('runTests')?.addEventListener('click', ()=>{
-      const original = JSON.stringify(state);
-      const logs=[]; const assert=(c,m)=> logs.push((c?'✅':'❌')+' '+m);
-      const p=parseCSV('White;Black;Result;Round\nX;Y;1-0;1\nY;Z;0-1;1\nX;Z;1/2-1/2;2');
-      assert(p.rows.length===3,'parseCSV reads 3 rows');
-      processRows(p.rows,'Test A',2,false); const aX=state.ratings['X'];
-      processRows(p.rows,'Test B',2,false); const bX=state.ratings['X']; assert(bX>aX,'double-count before rename (expected)');
-      renameTournament('Test B','Test A'); const rX=state.ratings['X']; assert(Math.abs(rX-aX)<1e-6,'ratings recomputed after rename to single count');
-      Object.assign(state, JSON.parse(original)); save(); render(); document.getElementById('msg').textContent = logs.join('\n');
-      showToast('Tests ran ✔️');
-    });
+function tournamentByName(name){
+  const key = String(name||'').trim().toLowerCase();
+  let rec = (state.tournaments||[]).find(t=> String(t.name||'').trim().toLowerCase()===key);
+  if(!rec){
+    rec = {name, at:new Date().toISOString(), games:[], sigs:{}};
+    state.tournaments.push(rec);
+  }
+  return rec;
+}
 
-    document.getElementById('btnRenamePlayer')?.addEventListener('click', ()=>{
-      const sel=document.getElementById('playerSelect');
-      const input=document.getElementById('playerNewName');
-      if(!sel?.value||!input?.value){ alert('Pick a player and type a new name.'); return; }
-      renamePlayer(sel.value, input.value);
-    });
-    document.getElementById('btnApplyTitle')?.addEventListener('click', ()=>{
-      const sel=document.getElementById('playerSelect');
-      const tsel=document.getElementById('playerTitleSelect');
-      if(!sel?.value){ alert('Pick a player first.'); return; }
-      const title = tsel?.value || '';
-      if(!title){ alert('Pick a title'); return; }
-      setPlayerTitle(sel.value, title);
-    });
+function processRows(rows, tournamentName){
+  if(!rows.length){ alert('No valid games found'); return; }
+  const tname = tournamentName || 'Event';
+  const rec = tournamentByName(tname);
+  let accepted=0;
+  for(const r of rows){
+    const W=cleanName(r.W), B=cleanName(r.B), R=r.R, round=r.round||'';
+    const sig = `${W}#${B}#${R}#${round}`;
+    if(rec.sigs[sig]) continue;
+    rec.sigs[sig]=true;
+    rec.games.push({W,B,R,round});
+    accepted++;
+  }
+  state.lastImport = { name:tname, count:accepted, at:new Date().toISOString() };
+  recomputeAll(); save(state); render();
+  document.getElementById('msg').textContent = `Added ${accepted} game(s) to ${tname}.`;
+  showToast('Done! ✅');
+}
 
-    render();
+function undoLastUpload(){
+  const LI = state.lastImport;
+  if(!LI || !LI.name){ alert('Nothing to undo'); return; }
+  const key = String(LI.name||'').trim().toLowerCase();
+  const rec = (state.tournaments||[]).find(t=> String(t.name||'').trim().toLowerCase()===key);
+  if(!rec){ alert('Nothing to undo'); state.lastImport=null; return; }
+  if(!confirm(`Remove the last ${LI.count||0} uploaded game(s) from "${rec.name}"?`)) return;
+  let removed = 0;
+  while(removed < (LI.count||0) && rec.games.length){
+    const g = rec.games.pop();
+    const sig = `${g.W}#${g.B}#${g.R}#${g.round||''}`;
+    delete rec.sigs[sig];
+    removed++;
+  }
+  state.lastImport=null;
+  if(!rec.games.length){
+    state.tournaments = state.tournaments.filter(t=> t!==rec);
+  }
+  recomputeAll(); save(state); render();
+  document.getElementById('msg').textContent = `Undid ${removed} game(s) from "${rec ? rec.name : LI.name}".`;
+  showToast('Undone');
+}
+
+function playerNames(){
+  const set = new Set();
+  for(const t of (state.tournaments||[])){
+    for(const g of (t.games||[])){ set.add(g.W); set.add(g.B); }
+  }
+  return [...set].sort((a,b)=> a.localeCompare(b));
+}
+
+function populatePlayerSelect(){
+  const sel = document.getElementById('playerSelect'); if(!sel) return;
+  const names = playerNames();
+  sel.innerHTML = names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  const input = document.getElementById('playerNewName'); if(names.length && input) input.value = stripTitle(names[0]);
+}
+
+function renamePlayer(oldName, newName){
+  oldName = cleanName(oldName); newName = cleanName(newName);
+  if(!oldName || !newName){ alert('Provide both the current and new player name.'); return; }
+  if(oldName===newName){ alert('That is already the name.'); return; }
+  for(const t of (state.tournaments||[])){
+    for(const g of (t.games||[])){
+      if(g.W===oldName) g.W = newName;
+      if(g.B===oldName) g.B = newName;
+    }
+    t.sigs = {};
+    for(const g of t.games){ t.sigs[`${g.W}#${g.B}#${g.R}#${g.round||''}`]=true; }
+  }
+  state.lastImport = null;
+  recomputeAll(); save(state); render();
+  document.getElementById('msg').textContent = `Player renamed: ${oldName} → ${newName}`;
+  showToast('Player updated ✅'); populatePlayerSelect();
+}
+
+function setPlayerTitle(name, title){
+  if(!title){ alert('Pick a title.'); return; }
+  const base = stripTitle(name);
+  const newName = `${title} ${base}`.trim();
+  renamePlayer(name, newName);
+}
+
+function render(){
+  const tbody = document.getElementById('tbody');
+  const list=Object.entries(state.ratings).map(([n,r])=>({n,r}))
+    .sort((a,b)=>b.r-a.r||a.n.localeCompare(b.n));
+  tbody.innerHTML = list.length
+    ? list.map((p,i)=>`<tr class="${i%2?'row-alt':''}">
+         <td class="col-no">${i+1}</td>
+         <td>${formatName(p.n)}</td>
+         <td class="col-games"><span class="badge">${state.games[p.n]||0}</span></td>
+         <td class="col-rating"><span class="badge">${Math.round(p.r)}</span></td>
+       </tr>`).join('')
+    : '<tr><td colspan="4" class="hint">No players yet</td></tr>';
+
+  populatePlayerSelect();
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Upload games
+  document.getElementById('process')?.addEventListener('click', async ()=>{
+    const f = document.getElementById('file')?.files?.[0]; if(!f){ alert('Choose a file'); return; }
+    const raw = document.getElementById('tname')?.value || f.name; const dot = raw.lastIndexOf('.'); const tname = dot>0? raw.substring(0,dot): raw;
+    try{
+      let parsed;
+      const lower = (f.name||'').toLowerCase();
+      if(lower.endsWith('.xlsx')||lower.endsWith('.xls')) parsed = await parseXLSX(f); else parsed = parseCSV(await f.text());
+      document.getElementById('msg').textContent = parsed.debug || 'Parsed.';
+      processRows(parsed.rows, tname);
+    }catch(err){ document.getElementById('msg').textContent = 'Error: '+ (err.message||String(err)); }
   });
 
-  // Delete tournament
-  function deleteTournament(name){
-    const key = normKey(name);
-    if(!key){ alert('Pick a tournament to delete.'); return; }
-    if(!state.tourStore || !state.tourStore[key]){ alert('Tournament not found.'); return; }
-    if(!confirm(`Are you sure you want to delete "${name}"?`)) return;
-    delete state.tourStore[key];
-    state.tournaments = (state.tournaments||[]).filter(t=> normKey(t.name)!==key);
-    recomputeAllRatings(); save(); render();
-    document.getElementById('msg').textContent = `Deleted tournament "${name}".`;
-    showToast('Tournament deleted 🗑️');
-  }
+  // Undo & backup
+  document.getElementById('reset')?.addEventListener('click', undoLastUpload);
+  document.getElementById('backup')?.addEventListener('click', ()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='leaderboard_backup.json'; a.click();
+    showToast('Backup downloaded');
+  });
 
-})();
+  // Restore from file
+  document.getElementById('restore')?.addEventListener('click', ()=>{
+    document.getElementById('restore_file').click();
+  });
+  document.getElementById('restore_file')?.addEventListener('change', async (e)=>{
+    const f = e.target.files?.[0]; if(!f) return;
+    try{
+      const data = JSON.parse(await f.text());
+      localStorage.setItem(STORE, JSON.stringify(data));
+      alert('Backup restored. The page will reload.');
+      location.reload();
+    }catch(err){ alert('Restore failed: ' + (err?.message || err)); }
+  });
+
+  // Restore from URL (same-origin or CORS-enabled)
+  async function restoreFromUrl(url){
+    if(!url) return alert('Paste a backup URL first.');
+    try{
+      const res = await fetch(url, {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      localStorage.setItem(STORE, JSON.stringify(data));
+      alert('Backup restored from URL. The page will reload.');
+      location.reload();
+    }catch(err){ alert('Restore from URL failed: ' + (err?.message || err)); }
+  }
+  const restoreUrlInput = document.getElementById('restore_url');
+  restoreUrlInput?.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ restoreFromUrl(restoreUrlInput.value.trim()); }
+  });
+  // (Optional) double-click Restore button to use URL input
+  document.getElementById('restore')?.addEventListener('dblclick', ()=>{
+    restoreFromUrl(restoreUrlInput?.value?.trim());
+  });
+
+  // Players
+  document.getElementById('btnRenamePlayer')?.addEventListener('click', ()=>{
+    const sel=document.getElementById('playerSelect');
+    const input=document.getElementById('playerNewName');
+    if(!sel?.value||!input?.value){ alert('Pick a player and type a new name.'); return; }
+    renamePlayer(sel.value, input.value);
+  });
+  document.getElementById('btnApplyTitle')?.addEventListener('click', ()=>{
+    const sel=document.getElementById('playerSelect');
+    const tsel=document.getElementById('playerTitleSelect');
+    if(!sel?.value){ alert('Pick a player first.'); return; }
+    const title = tsel?.value || '';
+    if(!title){ alert('Pick a title'); return; }
+    setPlayerTitle(sel.value, title);
+  });
+
+  render();
+});
 </script>
 
+<!-- Official Standings: official-only rendering -->
 <script>
 (function(){
-  function loadOfficial(){ try{ return JSON.parse(localStorage.getItem('officialLatest')||'null'); }catch(e){ return null; } }
-  function saveOfficial(obj){ try{ localStorage.setItem('officialLatest', JSON.stringify(obj)); }catch(e){} }
-  function clearOfficial(){ try{ localStorage.removeItem('officialLatest'); }catch(e){} }
+  const KEY = 'officialList_clean_v1';
 
-  // CSV
+  function readList(){
+    try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function saveList(L){
+    try { localStorage.setItem(KEY, JSON.stringify(L||[])); } catch(e){}
+  }
+
   function parseCSV(text){
-    const lines = String(text).split(/\r?\n/).filter(l=>l.trim().length);
+    const lines = String(text||'').split(/\r?\n/).filter(l => l.trim().length);
     if(!lines.length) return {columns:[], rows:[]};
     const cand=[',',';','\t','|']; let delim=',';
-    for(const d of cand){ if(lines[0].split(d).length>=2){ delim=d; break; } }
+    for(const d of cand){ if(lines[0].split(d).length>1){ delim=d; break; } }
     const H = lines[0].split(delim).map(s=>s.trim());
     const rows=[];
-    for(let i=1;i<lines.length;i++){
-      const cells = lines[i].split(delim);
-      const obj={}; H.forEach((h,idx)=> obj[h]=(cells[idx]??'').trim()); rows.push(obj);
+    for(let r=1;r<lines.length;r++){
+      const cells = lines[r].split(delim);
+      const obj={};
+      for(let c=0;c<H.length;c++){ obj[H[c]] = (cells[c]!=null? String(cells[c]).trim() : ''); }
+      if(Object.values(obj).some(v=> String(v).trim().length)) rows.push(obj);
     }
     return {columns:H, rows};
   }
 
-  // XLSX
   async function parseXLSX(file){
+    if(!window.XLSX) throw new Error('XLSX library not loaded.');
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, {type:'array'});
     for(const name of wb.SheetNames){
@@ -758,368 +502,86 @@
     return {columns:[], rows:[]};
   }
 
-  // Normalize (sort by Rank if present; else keep order)
-  function normalizeAndOrder(payload){
-    const cols = payload.columns.slice();
-    const rows = payload.rows.slice();
-    const rankKey = cols.find(c => /^(rk|rank|place|position|pos)$/i.test(c)) || cols.find(c => /(rk|rank|place|position|pos)/i.test(c));
-    if(rankKey){
-      rows.forEach(r=> (r.__rank = parseFloat((String(r[rankKey]||'').match(/\\d+(\\.\\d+)?/)||[])[0] || 'NaN')));
-      rows.sort((a,b)=> (isNaN(a.__rank)?Infinity:a.__rank) - (isNaN(b.__rank)?Infinity:b.__rank));
-      rows.forEach(r=> delete r.__rank);
-    }
-    return {columns: cols, rows: rows};
-  }
+  function esc(s){ return String(s==null?'':s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
-  // Render inside Latest only
-  function renderOfficialLatest(obj){
-    const tBody = document.getElementById('tour-body');
-    const mount = document.getElementById('officialLatestMount') || tBody;
-    if(!tBody) return;
-    if(!obj){ mount.innerHTML=''; if(typeof render==='function'){ try{ render(); }catch(e){} } return; }
-
-    const cols = obj.columns || [];
-    const rows = obj.rows || [];
-    const title = obj.title || 'Official Standings';
-
-    const idxName = cols.findIndex(c=> /name|player/i.test(c));
-    const idxPts  = cols.findIndex(c=> /pts?|points?|score/i.test(c));
-    function esc(s){ return String(s==null?'':s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-
-    const items = rows.slice(0, 3).map((r,i)=>{
-      const nm = idxName>=0 ? r[cols[idxName]] : Object.values(r)[0];
-      const pts = idxPts>=0 ? r[cols[idxPts]] : '';
-      const medal = ['🥇','🥈','🥉'][i] || '•';
-      return `<div class="slot"><span class="medal">${medal}</span><span class="name">${esc(nm)}</span><span class="score">${esc(pts)} pts</span></div>`;
-    }).join('');
-
-    const thead = '<thead><tr>' + cols.map(c=>`<th>${esc(c)}</th>`).join('') + '</tr></thead>';
-    const tbody = '<tbody>' + rows.map(r=> '<tr>' + cols.map(c=> `<td>${esc(r[c])}</td>`).join('') + '</tr>').join('') + '</tbody>';
-
-    mount.innerHTML = `
-      <div style="padding:8px 0;border-bottom:1px solid var(--line)">
-        <div style="display:flex;gap:8px;align-items:center">
-          <strong>${esc(title)}</strong><span class="pill">FINAL</span>
-        </div>
-        <div class="hint">${new Date().toLocaleString()}</div>
+  function renderList(list){
+    const mount = document.getElementById('officialLatestMount');
+    if(!mount) return;
+    if(!list || !list.length){ mount.innerHTML=''; return; }
+    const cards = list.map(one=>{
+      const cols = one.columns || [];
+      const rows = one.rows || [];
+      const title = one.title || 'Official Standings';
+      const idxName = cols.findIndex(c=> /name|player/i.test(c));
+      const idxPts  = cols.findIndex(c=> /pts?|points?|score/i.test(c));
+      const items = rows.slice(0, 3).map((r,i)=>{
+        const nm = idxName>=0 ? r[cols[idxName]] : Object.values(r)[0];
+        const pts = idxPts>=0 ? r[cols[idxPts]] : '';
+        const medal = ['🥇','🥈','🥉'][i] || '•';
+        return `<div class="slot"><span class="medal">${medal}</span><span class="name">${esc(nm)}</span><span class="score">${esc(pts)} pts</span></div>`;
+      }).join('');
+      const thead = '<thead><tr>' + cols.map(c=>`<th>${esc(c)}</th>`).join('') + '</tr></thead>';
+      const tbody = '<tbody>' + rows.map(r=>'<tr>'+cols.map(c=>`<td>${esc(r[c])}</td>`).join('')+'</tr>').join('') + '</tbody>';
+      return `<div class="latest">
+        <div class="tname">${esc(title)}</div>
         <div class="podium">${items}</div>
-        <details>
-          <summary><span class="summary-btn">Show full standings</span></summary>
-          <div style="margin-top:8px;overflow:auto">
-            <table style="min-width:720px;border-collapse:collapse;width:100%">${thead}${tbody}</table>
-          </div>
+        <details class="full">
+          <summary>Show full standings</summary>
+          <table class="full-standings">${thead}${tbody}</table>
         </details>
       </div>`;
-
-    if(!document.getElementById('officialLatestMount')){
-      tBody.innerHTML = mount.innerHTML;
-    }
-  }
-
-  async function handleUpload(){
-    const f = document.getElementById('off_file')?.files?.[0];
-    const title = document.getElementById('off_title')?.value?.trim();
-    const msg = document.getElementById('off_msg');
-    if(!f){ alert('Choose a CSV or XLSX file.'); return; }
-    try{
-      let payload;
-      const lower = (f.name||'').toLowerCase();
-      if(lower.endsWith('.xlsx') || lower.endsWith('.xls')) payload = await parseXLSX(f);
-      else payload = parseCSV(await f.text());
-      if(!payload.columns.length || !payload.rows.length){ msg.textContent='Could not read any rows/columns.'; return; }
-      const data = normalizeAndOrder(payload);
-      const store = { title: title||'Official Standings', columns: data.columns, rows: data.rows, updated: Date.now() };
-      saveOfficial(store);
-      renderOfficialLatest(store);
-      msg.textContent = 'Latest tournament replaced ✔';
-      if(window.showToast) try{ showToast('Official latest uploaded ✔'); }catch(e){}
-    }catch(err){
-      msg.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
-    }
-  }
-
-  function handleClear(){
-    clearOfficial(); renderOfficialLatest(null);
-    const msg = document.getElementById('off_msg'); if(msg) msg.textContent = 'Official latest cleared.';
+    }).join('<hr class="sep"/>');
+    mount.innerHTML = cards;
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{
-    document.getElementById('off_upload')?.addEventListener('click', handleUpload);
-    document.getElementById('off_clear')?.addEventListener('click', handleClear);
-    const saved = loadOfficial(); if(saved){ renderOfficialLatest(saved); }
-  });
-})();
-</script>
+    // initial paint
+    renderList(readList());
 
-<script>
-(function(){
-  // ====== Small polyfills ======
-  (function(){
-    if(!String.prototype.endsWith){
-      String.prototype.endsWith = function(s){ var a=String(this); return a.slice(-String(s).length)===String(s); };
-    }
-    if(!String.prototype.replaceAll){
-      String.prototype.replaceAll = function(find, repl){ return this.split(find).join(repl); };
-    }
-  })();
+    // Uploader wiring
+    const up = document.getElementById('off_upload');
+    const file = document.getElementById('off_file');
+    const titleEl = document.getElementById('off_title');
+    const msg = document.getElementById('off_msg');
 
-  // ====== Helpers ======
-  function esc(s){ s = String(s==null?'':s); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function stripTitle(full){
-    var s=String(full||'').trim();
-    var m=s.match(/^(GM|IM|FM|CM|NM|WGM|WIM|WFM|WCM|PM)\b\s*(.*)$/i);
-    return m? (m[2]||'').trim(): s;
-  }
-  function formatName(full){
-    var s = String(full||'').trim();
-    var m = s.match(/^(GM|IM|FM|CM|NM|WGM|WIM|WFM|WCM|PM)\b\s*(.*)$/i);
-    if(m){ return '<span class="pTitle">'+m[1].toUpperCase()+'</span>'+esc(m[2]||''); }
-    return esc(s);
-  }
-  function titleLookup(name){
-    try{
-      var st = JSON.parse(localStorage.getItem('mcl_state')||'null') || {};
-      var base = stripTitle(name).toLowerCase();
-      if(st && st.ratings){
-        for(var k in st.ratings){
-          if(stripTitle(k).toLowerCase()===base){ return k; }
-        }
-      }
-    }catch(e){}
-    return name;
-  }
-  function findIndex(cols, re){ for(var i=0;i<cols.length;i++){ if(re.test(String(cols[i]||''))){ return i; } } return -1; }
-  function normTitle(t){
-    t = String(t||'').toLowerCase();
-    t = t.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g,' ').trim();
-    return t;
-  }
-
-  // ====== Storage (list + dedup) ======
-  function readList(){
-    var L = [];
-    try{ L = JSON.parse(localStorage.getItem('officialList')||'[]'); }catch(e){ L = []; }
-    // dedup by normalized title (keep newest first)
-    var seen = Object.create(null), dedup = [];
-    for(var i=0;i<L.length;i++){
-      var it = L[i]||{}, key = normTitle(it.title);
-      if(seen[key]) continue;
-      seen[key] = true; dedup.push(it);
-    }
-    if(dedup.length !== L.length){
-      try{ localStorage.setItem('officialList', JSON.stringify(dedup)); }catch(e){}
-      return dedup;
-    }
-    return L;
-  }
-  function saveList(L){ try{ localStorage.setItem('officialList', JSON.stringify(L||[])); }catch(e){} }
-
-  // ====== Parsers ======
-  function parseCSV(text){
-    var lines = String(text||'').split(/\r?\n/).filter(function(l){ return l.trim().length; });
-    if(!lines.length) return {columns:[], rows:[]};
-    var cand=[',',';','\t','|']; var delim=','; for(var i=0;i<cand.length;i++){ if(lines[0].split(cand[i]).length>1){ delim=cand[i]; break; } }
-    var H = lines[0].split(delim).map(function(s){return s.trim();});
-    var rows=[];
-    for(var r=1;r<lines.length;r++){
-      var cells = lines[r].split(delim);
-      var obj={}; for(var c=0;c<H.length;c++){ obj[H[c]] = (cells[c]!=null? String(cells[c]).trim() : ''); }
-      var hasVal=false; for(var k=0;k<H.length;k++){ if(String(obj[H[k]]).trim().length){ hasVal=true; break; } }
-      if(hasVal) rows.push(obj);
-    }
-    return {columns:H, rows:rows};
-  }
-
-  // Lazy-load XLSX library
-  function loadXLSX(done, fail){
-    if(window.XLSX){ if(done) done(); return; }
-    var head = document.getElementsByTagName('head')[0] || document.documentElement;
-    var s = document.createElement('script');
-    s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-    var finished = false;
-    s.onload = function(){ if(finished) return; finished = true; if(done) done(); };
-    s.onerror = function(){ if(finished) return; finished = true; if(fail) fail(new Error('Failed to load Excel reader.')); };
-    head.appendChild(s);
-    setTimeout(function(){
-      if(!finished && !window.XLSX){
-        finished = true;
-        if(fail) fail(new Error('Excel reader took too long to load. Please export as CSV or try again.'));
-      }
-    }, 10000);
-  }
-  function parseXLSX(file, cb, errcb){
-    try{
-      var reader = new FileReader();
-      reader.onload = function(e){
-        try{
-          var data = e.target.result;
-          var wb = XLSX.read(data, {type:'array'});
-          for(var i=0;i<wb.SheetNames.length;i++){
-            var name = wb.SheetNames[i];
-            var A = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1});
-            if(!A || !A.length) continue;
-            var rows = [];
-            for(var r=0;r<A.length;r++){
-              var row = A[r] || []; var hasVal=false;
-              for(var c=0;c<row.length;c++){ if(String(row[c]||'').trim().length){ hasVal=true; break; } }
-              if(hasVal) rows.push(row);
-            }
-            if(rows.length<2) continue;
-            var H=[], body=[];
-            for(var h=0; h<rows[0].length; h++){ H.push(String(rows[0][h]||'').trim()); }
-            for(var j=1;j<rows.length;j++){
-              var rr = rows[j]||[], obj={};
-              for(var k=0;k<H.length;k++){ obj[H[k]] = (rr[k]!=null? String(rr[k]) : ''); }
-              body.push(obj);
-            }
-            if(cb) cb({columns:H, rows:body}); return;
-          }
-          if(cb) cb({columns:[], rows:[]});
-        }catch(err){ if(errcb) errcb(err); }
-      };
-      reader.onerror = function(err){ if(errcb) errcb(err); };
-      reader.readAsArrayBuffer(file);
-    }catch(err){ if(errcb) errcb(err); }
-  }
-
-  // ====== UI (Latest panel stacking) ======
-  function ensureHost(){ return document.getElementById('tour-body'); }
-  function cardHTML(obj){
-    var cols = obj.columns||[], rows = obj.rows||[], title = obj.title || 'Official Standings';
-    var updated = obj.updated ? new Date(obj.updated).toLocaleString() : new Date().toLocaleString();
-    var idxName = findIndex(cols, /name|player/i), idxPts = findIndex(cols, /pts?|points?|score/i);
-    var podium='';
-    for(var i=0;i<rows.length && i<3;i++){
-      var r = rows[i]||{}; var raw = idxName>=0 ? r[cols[idxName]] : (function(){ for(var kk in r){ return r[kk]; } })();
-      var titled = titleLookup(raw); var pts = idxPts>=0 ? r[cols[idxPts]] : ''; var medal = ['🥇','🥈','🥉'][i] || '•';
-      podium += '<div class="slot"><span class="medal">'+medal+'</span><span class="name">'+formatName(titled)+'</span><span class="score">'+esc(pts)+' pts</span></div>';
-    }
-    var thead = '<thead><tr>'; for(var c=0;c<cols.length;c++){ thead += '<th>'+esc(cols[c])+'</th>'; } thead += '</tr></thead>';
-    var tbody = '<tbody>';
-    for(var ri=0;ri<rows.length;ri++){
-      var rr = rows[ri]||{}; tbody += '<tr>';
-      for(var ci=0;ci<cols.length;ci++){
-        if(ci===idxName){ var nm = titleLookup(rr[cols[ci]]); tbody += '<td>'+formatName(nm)+'</td>'; }
-        else { tbody += '<td>'+esc(rr[cols[ci]])+'</td>'; }
-      }
-      tbody += '</tr>';
-    }
-    tbody += '</tbody>';
-    var bannerOpen = '<span class="tBanner">';
-    if(!document.querySelector('.tBanner')){
-      bannerOpen = '<span style="display:inline-block;background:#0b2a66;color:#fff;font-weight:900;letter-spacing:.6px;text-transform:uppercase;padding:6px 12px;border-radius:8px;">';
-    }
-    return ''
-      + '<div class="card officialCard" data-id="'+esc(obj.id||'')+'" style="padding:8px 0;border-bottom:1px solid var(--line)">'
-      + ' <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
-      + '   <div style="display:flex;align-items:center;gap:8px">'+bannerOpen+esc(title)+'</span><span class="pill">FINAL</span></div>'
-      + '   <button class="btn outline rmOfficial" data-id="'+esc(obj.id||'')+'" title="Remove this tournament">Remove</button>'
-      + ' </div>'
-      + ' <div class="hint">'+esc(updated)+'</div>'
-      + ' <div class="podium">'+podium+'</div>'
-      + ' <details><summary><span class="summary-btn">Show full standings</span></summary>'
-      + ' <div style="margin-top:8px;overflow:auto"><table style="min-width:720px;border-collapse:collapse;width:100%">'+thead+tbody+'</table></div>'
-      + ' </details></div>';
-  }
-  function renderList(){
-    var host = ensureHost(); if(!host) return;
-    var L = readList(); if(!L.length) return;
-    var html=''; for(var i=0;i<L.length;i++){ html += cardHTML(L[i]); }
-    html += '<div style="margin-top:8px"><button class="btn outline" id="clearAllOfficial">Clear All</button></div>';
-    host.innerHTML = html;
-    // wire remove buttons
-    var btns = host.querySelectorAll('.rmOfficial');
-    for(var i=0;i<btns.length;i++){
-      btns[i].addEventListener('click', function(ev){
-        var id = ev.currentTarget.getAttribute('data-id');
-        var arr = readList().filter(function(x){ return String(x.id)!==String(id); });
-        saveList(arr); renderList();
-      });
-    }
-    var clr = document.getElementById('clearAllOfficial');
-    if(clr){ clr.addEventListener('click', function(){ saveList([]); host.innerHTML=''; if(typeof window.render==='function'){ setTimeout(function(){ window.render(); }, 0); } }); }
-  }
-
-  // ====== Own the upload button (supports CSV + Excel) ======
-  function ownUploader(){
-    var up = document.getElementById('off_upload');
-    var file = document.getElementById('off_file');
-    var titleEl = document.getElementById('off_title');
-    var msg = document.getElementById('off_msg');
-    if(!up || !file) return;
-    if(up.__owned) return; up.__owned = true;
-    var clone = up.cloneNode(true); up.parentNode.replaceChild(clone, up);
-    clone.addEventListener('click', function(ev){
-      ev.preventDefault(); ev.stopPropagation();
-      var f = file.files && file.files[0];
+    up?.addEventListener('click', async (ev)=>{
+      ev.preventDefault();
+      const f = file?.files?.[0];
       if(!f){ alert('Choose a CSV or Excel file.'); return; }
-      var lower = (f.name||'').toLowerCase();
-
-      function proceed(payload){
-        if(!payload || !payload.columns || !payload.columns.length || !payload.rows || !payload.rows.length){
-          if(msg) msg.textContent = 'Could not read any rows/columns.'; return;
-        }
-        var obj = {
+      try{
+        const lower = (f.name||'').toLowerCase();
+        const parsed = (lower.endsWith('.xlsx')||lower.endsWith('.xls')) ? await parseXLSX(f) : parseCSV(await f.text());
+        if(!parsed.columns.length || !parsed.rows.length){ msg && (msg.textContent='Could not read any rows/columns.'); return; }
+        const obj = {
           id: Date.now()+'-'+Math.random().toString(36).slice(2),
           title: (titleEl && titleEl.value && titleEl.value.trim()) || 'Official Standings',
-          columns: payload.columns,
-          rows: payload.rows,
+          columns: parsed.columns,
+          rows: parsed.rows,
           updated: Date.now()
         };
-        var L = readList();
-        var key = normTitle(obj.title);
-        L = L.filter(function(x){ return normTitle(x.title) !== key; });
-        L.unshift(obj);
-        saveList(L);
-        if(msg) msg.textContent = 'Added: ' + obj.title + ' • total ' + L.length;
-        renderList();
-      }
-
-      if(lower.endsWith('.xlsx') || lower.endsWith('.xls')){
-        if(msg) msg.textContent = 'Loading Excel reader…';
-        loadXLSX(function(){
-          if(msg) msg.textContent = 'Parsing Excel…';
-          parseXLSX(f, proceed, function(err){ if(msg) msg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); });
-        }, function(err){
-          if(msg) msg.textContent = (err && err.message) ? err.message : 'Could not load Excel reader. Try CSV instead.';
-        });
-      } else {
-        if(!(lower.endsWith('.csv') || (f.type && /csv|text\/plain/.test(f.type)))){
-          if(msg) msg.textContent = 'Unsupported file. Use CSV/XLSX/XLS.'; return;
-        }
-        var rd = new FileReader();
-        if(msg) msg.textContent = 'Parsing CSV…';
-        rd.onload = function(e){ try{ proceed(parseCSV(e.target.result)); }catch(err){ if(msg) msg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); } };
-        rd.onerror = function(){ if(msg) msg.textContent = 'Error reading file.'; };
-        rd.readAsText(f);
+        const list = readList();
+        const norm = (s)=> String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+        const key = norm(obj.title);
+        const filtered = list.filter(x=> norm(x.title)!==key);
+        filtered.unshift(obj);
+        const capped = filtered.slice(0,5);
+        renderList(capped);
+        saveList(capped);
+        msg && (msg.textContent = 'Added: ' + obj.title + ' • total ' + capped.length);
+      }catch(err){
+        msg && (msg.textContent = 'Error: ' + (err && err.message ? err.message : String(err)));
       }
     });
-  }
 
-  // ====== Lock Latest against auto-overwrite from game uploads ======
-  var ignore=false, observer;
-  function ensureObserver(){
-    var host = ensureHost(); if(!host) return;
-    if(observer) observer.disconnect();
-    observer = new MutationObserver(function(){
-      if(ignore) return;
-      var L = readList();
-      if(L.length){
-        ignore = true; renderList(); setTimeout(function(){ ignore=false; }, 0);
-      }
+    // Remove only latest card
+    document.getElementById('off_remove_latest')?.addEventListener('click', ()=>{
+      let list = readList();
+      if(!list.length){ alert('No official tournaments to remove.'); return; }
+      list.shift();
+      saveList(list);
+      renderList(list);
     });
-    observer.observe(host, {childList:true, subtree:true});
-  }
-
-  // ====== Boot ======
-  document.addEventListener('DOMContentLoaded', function(){
-    ownUploader();
-    if(readList().length){ renderList(); ensureObserver(); }
-    var clr = document.getElementById('off_clear');
-    if(clr){ clr.addEventListener('click', function(){ saveList([]); var host=ensureHost(); if(host) host.innerHTML=''; if(observer) observer.disconnect(); if(typeof window.render==='function'){ setTimeout(function(){ window.render(); }, 0); } }); }
   });
-  setTimeout(ownUploader, 400);
-  setTimeout(function(){ if(readList().length){ renderList(); } }, 600);
 })();
 </script>
 </body>
